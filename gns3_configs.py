@@ -25,7 +25,7 @@ def select_project(projects: List[Dict], server_url: str) -> tuple[gns3fy.Projec
                     project_id=selected["id"], 
                     connector=gns3fy.Gns3Connector(url=server_url)
                 )
-                return project, selected["name"]  # Return both project object and name
+                return project, selected["name"]
             print("Invalid selection. Try again.")
         except ValueError:
             print("Please enter a number.")
@@ -70,13 +70,13 @@ def get_config_filename(server_url: str, project_id: str, node_id: str) -> str:
     return None
 
 def save_configs(server_url: str, project_id: str, project_name: str, nodes: List[gns3fy.Node], do_copy_run_start: bool):
-    """Download configurations into timestamped/project_name subdirectories with original filenames"""
+    """Download configurations into project_name/timestamp subdirectories with original filenames"""
     if do_copy_run_start:
         print("\nNote: 'copy run start' cannot be executed via API")
         print("Existing startup-config files will be downloaded as-is")
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    config_dir = os.path.join(timestamp, project_name)
+    config_dir = os.path.join(project_name, timestamp)
     os.makedirs(config_dir, exist_ok=True)
 
     print(f"\nDownloading configurations to {config_dir}...")
@@ -99,14 +99,14 @@ def save_configs(server_url: str, project_id: str, project_name: str, nodes: Lis
                 print(f"Error downloading config for {node.name}: {e}")
 
 def select_config_directory(project_name: str) -> str:
-    """Let user select a timestamped config directory and use project_name subdir"""
-    if not os.path.exists("."):
-        print("No timestamped directories found. Please download configs first.")
+    """Let user select a timestamped config directory within project_name"""
+    if not os.path.exists(project_name):
+        print(f"No '{project_name}' directory found. Please download configs first.")
         return None
     
-    subdirs = [d for d in os.listdir(".") if os.path.isdir(d) and os.path.isdir(os.path.join(d, project_name))]
+    subdirs = [d for d in os.listdir(project_name) if os.path.isdir(os.path.join(project_name, d))]
     if not subdirs:
-        print(f"No timestamped directories with '{project_name}' subdir found. Please download configs first.")
+        print(f"No timestamped subdirectories found in '{project_name}'. Please download configs first.")
         return None
     
     print("\nAvailable Config Directories:")
@@ -117,13 +117,13 @@ def select_config_directory(project_name: str) -> str:
         try:
             choice = int(input("\nSelect a directory number: "))
             if 1 <= choice <= len(subdirs):
-                return os.path.join(subdirs[choice-1], project_name)
+                return os.path.join(project_name, subdirs[choice-1])
             print("Invalid selection. Try again.")
         except ValueError:
             print("Please enter a number.")
 
 def upload_configs(server_url: str, project_id: str, project_name: str, nodes: List[gns3fy.Node], do_reload: bool):
-    """Upload configurations from a selected timestamped/project_name directory using GNS3 API"""
+    """Upload configurations from a selected project_name/timestamp directory using GNS3 API"""
     config_dir = select_config_directory(project_name)
     if not config_dir:
         print("Aborting upload due to no valid directory selected.")
@@ -199,7 +199,7 @@ def main():
             print("No projects found!")
             return
         
-        project, project_name = select_project(projects, SERVER_URL)  # Unpack project and name
+        project, project_name = select_project(projects, SERVER_URL)
         nodes = display_nodes(project)
         
         while True:
