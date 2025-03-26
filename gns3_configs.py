@@ -68,14 +68,14 @@ def get_config_filename(server_url: str, project_id: str, node_id: str) -> str:
     print(f"No config file found for node {node_id}. Tried: {possible_filenames}")
     return None
 
-def save_configs(server_url: str, project_id: str, nodes: List[gns3fy.Node], do_copy_run_start: bool):
-    """Download configurations using GNS3 API into timestamped subdirectories with original filenames"""
+def save_configs(server_url: str, project_id: str, project_name: str, nodes: List[gns3fy.Node], do_copy_run_start: bool):
+    """Download configurations into timestamped/project_name subdirectories with original filenames"""
     if do_copy_run_start:
         print("\nNote: 'copy run start' cannot be executed via API")
         print("Existing startup-config files will be downloaded as-is")
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    config_dir = os.path.join("configs", timestamp)
+    config_dir = os.path.join(timestamp, project_name)
     os.makedirs(config_dir, exist_ok=True)
 
     print(f"\nDownloading configurations to {config_dir}...")
@@ -97,16 +97,15 @@ def save_configs(server_url: str, project_id: str, nodes: List[gns3fy.Node], do_
             except requests.RequestException as e:
                 print(f"Error downloading config for {node.name}: {e}")
 
-def select_config_directory() -> str:
-    """Let user select a timestamped config directory"""
-    config_base_dir = "configs"
-    if not os.path.exists(config_base_dir):
-        print("No 'configs' directory found. Please download configs first.")
+def select_config_directory(project_name: str) -> str:
+    """Let user select a timestamped config directory and use project_name subdir"""
+    if not os.path.exists("."):
+        print("No timestamped directories found. Please download configs first.")
         return None
     
-    subdirs = [d for d in os.listdir(config_base_dir) if os.path.isdir(os.path.join(config_base_dir, d))]
+    subdirs = [d for d in os.listdir(".") if os.path.isdir(d) and os.path.isdir(os.path.join(d, project_name))]
     if not subdirs:
-        print("No timestamped config directories found. Please download configs first.")
+        print(f"No timestamped directories with '{project_name}' subdir found. Please download configs first.")
         return None
     
     print("\nAvailable Config Directories:")
@@ -117,14 +116,14 @@ def select_config_directory() -> str:
         try:
             choice = int(input("\nSelect a directory number: "))
             if 1 <= choice <= len(subdirs):
-                return os.path.join(config_base_dir, subdirs[choice-1])
+                return os.path.join(subdirs[choice-1], project_name)
             print("Invalid selection. Try again.")
         except ValueError:
             print("Please enter a number.")
 
-def upload_configs(server_url: str, project_id: str, nodes: List[gns3fy.Node], do_reload: bool):
-    """Upload configurations from a selected timestamped directory using GNS3 API with original filenames"""
-    config_dir = select_config_directory()
+def upload_configs(server_url: str, project_id: str, project_name: str, nodes: List[gns3fy.Node], do_reload: bool):
+    """Upload configurations from a selected timestamped/project_name directory using GNS3 API"""
+    config_dir = select_config_directory(project_name)
     if not config_dir:
         print("Aborting upload due to no valid directory selected.")
         return
@@ -200,6 +199,7 @@ def main():
             return
         
         project = select_project(projects, SERVER_URL)
+        project_name = project.name  # Capture project name for directory structure
         nodes = display_nodes(project)
         
         while True:
@@ -220,10 +220,10 @@ def main():
             
             if choice == "1":
                 copy_choice = input("\nExecute 'copy run start' first? (y/n): ").lower()
-                save_configs(SERVER_URL, project.project_id, selected_nodes, copy_choice == "y")
+                save_configs(SERVER_URL, project.project_id, project_name, selected_nodes, copy_choice == "y")
                 
             elif choice == "2":
-                upload_configs(SERVER_URL, project.project_id, selected_nodes, False)
+                upload_configs(SERVER_URL, project.project_id, project_name, selected_nodes, False)
                 reload_choice = input("\nReload routers after upload? (y/n): ").lower()
                 if reload_choice == "y":
                     reload_nodes(selected_nodes)
