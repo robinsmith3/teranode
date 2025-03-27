@@ -69,12 +69,8 @@ def get_config_filename(server_url: str, project_id: str, node_id: str) -> str:
     print(f"No config file found for node {node_id}. Tried: {possible_filenames}")
     return None
 
-def save_configs(server_url: str, project_id: str, project_name: str, nodes: List[gns3fy.Node], do_copy_run_start: bool):
+def save_configs(server_url: str, project_id: str, project_name: str, nodes: List[gns3fy.Node]):
     """Download configurations into configs/project_name/timestamp subdirectories with original filenames"""
-    if do_copy_run_start:
-        print("\nNote: 'copy run start' cannot be executed via API")
-        print("Existing startup-config files will be downloaded as-is")
-
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     config_dir = os.path.join("configs", project_name, timestamp)
     os.makedirs(config_dir, exist_ok=True)
@@ -220,8 +216,7 @@ def main():
             selected_nodes = select_nodes(nodes)
             
             if choice == "1":
-                copy_choice = input("\nExecute 'copy run start' first? (y/n): ").lower()
-                save_configs(SERVER_URL, project.project_id, project_name, selected_nodes, copy_choice == "y")
+                save_configs(SERVER_URL, project.project_id, project_name, selected_nodes)
                 
             elif choice == "2":
                 upload_configs(SERVER_URL, project.project_id, project_name, selected_nodes, False)
